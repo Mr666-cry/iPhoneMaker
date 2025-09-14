@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,7 +9,6 @@
     :root{
       --bg-1:#071126;
       --bg-2:#0b2740;
-      --card:#071a2b;
       --accent:#3aa0ff;
       --muted:rgba(255,255,255,0.65);
       --glass: rgba(255,255,255,0.04);
@@ -39,7 +37,6 @@
       backdrop-filter: blur(8px);
       text-align:center;
     }
-    header{margin-bottom:22px}
     .logo{
       width:64px;height:64px;margin:0 auto 14px;
       border-radius:14px;
@@ -50,16 +47,17 @@
     }
     h1{font-size:24px;margin:0;color:#dff3ff}
     p.sub{margin:6px 0 0;color:var(--muted);font-size:14px}
-    .controls{
-      display:flex;gap:12px;margin-top:18px;
-    }
+    .controls{display:flex;gap:12px;margin-top:18px}
     input[type="text"]{
       flex:1;padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);
       background:var(--glass); color:inherit; outline:none; font-size:14px;
     }
     button.primary{
-      padding:12px 20px;border-radius:12px;border:none;background:linear-gradient(90deg,var(--accent),#6b8cff);
-      color:#031125;font-weight:700; cursor:pointer; box-shadow: 0 8px 24px rgba(58,160,255,0.15);
+      padding:14px 24px;border-radius:14px;border:none;
+      background:linear-gradient(90deg,var(--accent),#6b8cff);
+      color:#031125;font-weight:700; cursor:pointer;
+      box-shadow: 0 8px 24px rgba(58,160,255,0.15);
+      font-size:16px;
     }
     .preview{
       width:100%;border-radius:12px;overflow:hidden;background:#000;
@@ -67,8 +65,45 @@
       margin-top:22px;
     }
     .preview img{width:100%;height:auto;display:block}
-    .links{display:flex;gap:12px;margin-top:16px}
-    .dl { flex:1;padding:12px;border-radius:10px;background:#07233a;color:#eaf6ff;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,0.05) }
+    .links-top{
+      display:flex;justify-content:center;gap:20px;
+      margin-top:18px;
+    }
+    .links-bottom{
+      margin-top:14px;
+      display:flex;justify-content:center;
+    }
+    .dl{
+      flex:1;
+      max-width:180px;
+      padding:16px;
+      border-radius:14px;
+      background:#07233a;
+      color:#eaf6ff;
+      text-align:center;
+      cursor:pointer;
+      border:1px solid rgba(255,255,255,0.08);
+      font-size:16px;
+      font-weight:600;
+      transition:all .2s;
+    }
+    .dl:hover{background:#0b355a}
+    .uploadBox{
+      margin-top:14px;
+      padding:12px;
+      background:var(--glass);
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.06);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .uploadBox a{color:var(--accent);text-decoration:none;word-break:break-all}
+    .copyBtn{
+      padding:6px 12px;border:none;border-radius:8px;
+      background:var(--accent);color:#031125;font-weight:600;cursor:pointer;
+    }
     footer{margin-top:26px;text-align:center;color:rgba(255,255,255,0.6);font-size:13px}
   </style>
 </head>
@@ -89,10 +124,17 @@
       <div style="text-align:center;color:var(--muted)">Hasil akan tampil di sini</div>
     </div>
 
-    <div class="links">
+    <!-- Tombol download & open -->
+    <div class="links-top">
       <div id="btnDownload" class="dl" style="display:none">⬇️ Download</div>
       <div id="btnOpen" class="dl" style="display:none">🔗 Open</div>
     </div>
+    <!-- Tombol upload di bawah -->
+    <div class="links-bottom">
+      <div id="btnUpload" class="dl" style="display:none">☁️ Upload</div>
+    </div>
+
+    <div id="uploadResult" style="display:none"></div>
 
     <footer>&lt;/&gt; 2025 SamuDev</footer>
   </div>
@@ -104,9 +146,14 @@
     const previewBox = document.getElementById("previewBox");
     const btnDownload = document.getElementById("btnDownload");
     const btnOpen = document.getElementById("btnOpen");
+    const btnUpload = document.getElementById("btnUpload");
+    const uploadResult = document.getElementById("uploadResult");
+
+    const IMGBB_API_KEY = "af520841c5a758ae3341b05ba1b32802"; // ganti dengan API key imgbb
 
     let lastBlob = null;
     let lastUrl = null;
+    let lastImgBBUrl = null;
 
     btnCreate.addEventListener("click", async () => {
       const text = txt.value.trim();
@@ -126,6 +173,7 @@
 
         btnDownload.style.display = "block";
         btnOpen.style.display = "block";
+        btnUpload.style.display = "block";
       } catch (err) {
         previewBox.innerHTML = `<div style="padding:20px;color:#f88">Gagal memuat hasil.</div>`;
       } finally {
@@ -146,10 +194,79 @@
       window.open(lastUrl, "_blank", "noopener");
     });
 
+    btnUpload.addEventListener("click", async () => {
+      if (!lastBlob) return alert("Belum ada gambar!");
+
+      btnUpload.textContent = "Uploading...";
+      btnUpload.disabled = true;
+      uploadResult.style.display = "none";
+
+      try {
+        const formData = new FormData();
+        formData.append("image", lastBlob);
+
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+          method: "POST",
+          body: formData
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          lastImgBBUrl = data.data.url;
+          uploadResult.innerHTML = `
+            <div class="uploadBox">
+              <a href="${lastImgBBUrl}" target="_blank">${lastImgBBUrl}</a>
+              <button id="btnCopy" class="copyBtn">Copy</button>
+            </div>`;
+          uploadResult.style.display = "block";
+
+          document.getElementById("btnCopy").addEventListener("click", () => copyLink());
+        } else {
+          alert("Upload gagal: " + (data.error?.message || "Unknown error"));
+        }
+      } catch (e) {
+        alert("Upload error: " + e.message);
+      } finally {
+        btnUpload.textContent = "☁️ Upload";
+        btnUpload.disabled = false;
+      }
+    });
+
+    async function copyLink(){
+      if (!lastImgBBUrl) return;
+
+      try {
+        // coba cara modern
+        await navigator.clipboard.writeText(lastImgBBUrl);
+        suksesCopy();
+      } catch (e) {
+        try {
+          // fallback cara lama
+          const temp = document.createElement("input");
+          temp.value = lastImgBBUrl;
+          document.body.appendChild(temp);
+          temp.select();
+          document.execCommand("copy");
+          document.body.removeChild(temp);
+          suksesCopy();
+        } catch (err) {
+          alert("Gagal menyalin link!");
+        }
+      }
+    }
+
+    function suksesCopy(){
+      const copyBtn = document.getElementById("btnCopy");
+      copyBtn.textContent = "Copied!";
+      setTimeout(()=>copyBtn.textContent="Copy",1500);
+    }
+
     function clearPreview(){
       previewBox.innerHTML = `<div style="text-align:center;color:var(--muted)">Hasil akan tampil di sini</div>`;
       btnDownload.style.display = "none";
       btnOpen.style.display = "none";
+      btnUpload.style.display = "none";
+      uploadResult.style.display = "none";
     }
     function setLoading(flag){
       btnCreate.disabled = flag;
@@ -157,4 +274,4 @@
     }
   </script>
 </body>
-</html>
+      </html>
